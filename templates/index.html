@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Threat Intelligence Platform</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0d1117; color: #c9d1d9; min-height: 100vh; }
+
+        .header { background: #161b22; border-bottom: 1px solid #21262d; padding: 16px 40px; display: flex; align-items: center; justify-content: space-between; }
+        .header h1 { color: #f85149; font-size: 22px; font-weight: 700; }
+        .header-right { display: flex; gap: 16px; }
+        .nav-btn { padding: 6px 16px; background: #21262d; border: 1px solid #30363d; border-radius: 6px; color: #c9d1d9; cursor: pointer; font-size: 13px; }
+        .nav-btn:hover { border-color: #f85149; color: #f85149; }
+        .nav-btn.active { background: #3a1a1a; border-color: #f85149; color: #f85149; }
+
+        .hero { text-align: center; padding: 40px 20px 30px; }
+        .hero h2 { font-size: 28px; color: #e6edf3; margin-bottom: 8px; }
+        .hero p { color: #8b949e; font-size: 14px; margin-bottom: 28px; }
+
+        .search-box { display: flex; gap: 10px; max-width: 700px; margin: 0 auto 12px; }
+        .search-box input { flex: 1; padding: 12px 16px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; color: #e6edf3; font-size: 15px; outline: none; font-family: monospace; }
+        .search-box input:focus { border-color: #f85149; }
+        .search-btn { padding: 12px 24px; background: #f85149; border: none; border-radius: 8px; color: white; font-size: 14px; cursor: pointer; font-weight: 600; }
+        .search-btn:hover { background: #da3633; }
+        .search-btn:disabled { background: #21262d; cursor: not-allowed; }
+
+        .type-btns { display: flex; gap: 8px; justify-content: center; margin-bottom: 8px; }
+        .type-btn { padding: 4px 12px; background: #21262d; border: 1px solid #30363d; border-radius: 12px; color: #8b949e; font-size: 12px; cursor: pointer; }
+        .type-btn.active { background: #3a1a1a; border-color: #f85149; color: #f85149; }
+
+        .examples { text-align: center; font-size: 12px; color: #8b949e; }
+        .examples span { cursor: pointer; color: #58a6ff; margin: 0 6px; }
+        .examples span:hover { text-decoration: underline; }
+
+        .loading { text-align: center; padding: 40px; display: none; }
+        .spinner { width: 40px; height: 40px; border: 3px solid #21262d; border-top: 3px solid #f85149; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .content { max-width: 1100px; margin: 0 auto; padding: 0 40px 60px; }
+
+        .results { display: none; }
+        .cve-section { display: none; }
+
+        .threat-card { background: #161b22; border: 1px solid #21262d; border-radius: 12px; padding: 24px; margin-bottom: 16px; }
+        .threat-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+        .threat-title { font-size: 18px; font-weight: 700; color: #e6edf3; font-family: monospace; }
+        .threat-badge { padding: 6px 16px; border-radius: 6px; font-size: 14px; font-weight: 700; }
+        .badge-CRITICAL { background: #3a1a1a; color: #f85149; }
+        .badge-HIGH { background: #3a1f0a; color: #f0883e; }
+        .badge-MEDIUM { background: #3a2a0a; color: #d29922; }
+        .badge-LOW { background: #1a3a2a; color: #3fb950; }
+
+        .score-bar { margin-bottom: 20px; }
+        .score-label { display: flex; justify-content: space-between; font-size: 12px; color: #8b949e; margin-bottom: 6px; }
+        .bar-bg { background: #21262d; border-radius: 4px; height: 8px; }
+        .bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
+
+        .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+        .tag { padding: 3px 10px; border-radius: 12px; font-size: 12px; }
+        .tag-red { background: #3a1a1a; color: #f85149; }
+        .tag-orange { background: #3a1f0a; color: #f0883e; }
+        .tag-blue { background: #1f3a5f; color: #58a6ff; }
+        .tag-green { background: #1a3a2a; color: #3fb950; }
+        .tag-gray { background: #21262d; color: #8b949e; }
+
+        .sources-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        .source-card { background: #0d1117; border-radius: 8px; padding: 16px; }
+        .source-title { font-size: 12px; color: #8b949e; margin-bottom: 10px; font-weight: 600; }
+        .source-item { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px solid #21262d; }
+        .source-item:last-child { border-bottom: none; }
+        .source-key { color: #8b949e; }
+        .source-val { color: #e6edf3; text-align: right; max-width: 60%; word-break: break-all; }
+        .source-val.danger { color: #f85149; }
+        .source-val.safe { color: #3fb950; }
+
+        .cve-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .cve-card { background: #161b22; border: 1px solid #21262d; border-radius: 8px; padding: 16px; }
+        .cve-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .cve-id { font-family: monospace; font-size: 13px; color: #58a6ff; font-weight: 600; }
+        .cve-score { font-size: 18px; font-weight: 700; }
+        .score-CRITICAL { color: #f85149; }
+        .score-HIGH { color: #f0883e; }
+        .score-MEDIUM { color: #d29922; }
+        .score-LOW { color: #3fb950; }
+        .cve-desc { font-size: 12px; color: #8b949e; line-height: 1.5; margin-bottom: 8px; }
+        .cve-meta { font-size: 11px; color: #6e7681; }
+        .cve-link { color: #58a6ff; text-decoration: none; font-size: 11px; }
+
+        .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+        .stat-card { background: #161b22; border: 1px solid #21262d; border-radius: 8px; padding: 16px; text-align: center; }
+        .stat-num { font-size: 28px; font-weight: 700; }
+        .stat-label { font-size: 12px; color: #8b949e; margin-top: 4px; }
+
+        .search-cve { display: flex; gap: 8px; margin-bottom: 16px; }
+        .search-cve input { flex: 1; padding: 10px 14px; background: #161b22; border: 1px solid #30363d; border-radius: 6px; color: #e6edf3; font-size: 14px; outline: none; }
+        .search-cve input:focus { border-color: #f85149; }
+        .search-cve button { padding: 10px 20px; background: #f85149; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 13px; }
+
+        .error-box { background: #3a1a1a; border: 1px solid #f85149; border-radius: 8px; padding: 16px; color: #f85149; margin-bottom: 16px; }
+        .section-title { font-size: 16px; font-weight: 600; color: #e6edf3; margin-bottom: 16px; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>🔴 Threat Intelligence Platform</h1>
+    <div class="header-right">
+        <button class="nav-btn active" onclick="showSection('search')">🔍 Analiz</button>
+        <button class="nav-btn" onclick="showSection('cve')">💀 CVE Tracker</button>
+    </div>
+</div>
+
+<div id="search-section">
+    <div class="hero">
+        <h2>Tehdit İstihbaratı Platformu</h2>
+        <p>IP, Domain veya CVE analizi — VirusTotal, AbuseIPDB ve Shodan ile</p>
+        <div class="search-box">
+            <input type="text" id="query-input" placeholder="IP, domain veya CVE girin..." />
+            <button class="search-btn" id="search-btn" onclick="analyze()">Analiz Et</button>
+        </div>
+        <div class="type-btns">
+            <button class="type-btn active" onclick="setType('auto')" id="btn-auto">🤖 Otomatik</button>
+            <button class="type-btn" onclick="setType('ip')" id="btn-ip">🌐 IP</button>
+            <button class="type-btn" onclick="setType('domain')" id="btn-domain">🔗 Domain</button>
+            <button class="type-btn" onclick="setType('cve')" id="btn-cve">💀 CVE</button>
+        </div>
+        <div class="examples">
+            <span>Örnek:</span>
+            <span onclick="setQuery('8.8.8.8')">8.8.8.8</span>
+            <span onclick="setQuery('185.220.101.45')">185.220.101.45</span>
+            <span onclick="setQuery('github.com')">github.com</span>
+            <span onclick="setQuery('CVE-2024-1234')">CVE-2024-1234</span>
+        </div>
+    </div>
+
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p style="color:#8b949e;font-size:14px" id="loading-text">Analiz yapılıyor...</p>
+    </div>
+
+    <div class="content">
+        <div class="results" id="results"></div>
+    </div>
+</div>
+
+<div id="cve-section" style="display:none">
+    <div class="content" style="padding-top:24px">
+        <div class="search-cve">
+            <input type="text" id="cve-search-input" placeholder="CVE ara (örn: apache, log4j, nginx...)" />
+            <button onclick="searchCVE()">Ara</button>
+        </div>
+        <div id="cve-stats" class="stats-row" style="display:none"></div>
+        <p class="section-title" id="cve-title">Son 7 Günün Kritik CVE'leri</p>
+        <div class="cve-grid" id="cve-grid"></div>
+    </div>
+</div>
+
+<script>
+    let currentType = "auto";
+
+    function showSection(section) {
+        document.getElementById("search-section").style.display = section === "search" ? "block" : "none";
+        document.getElementById("cve-section").style.display = section === "cve" ? "block" : "none";
+        document.querySelectorAll(".nav-btn").forEach((b, i) => {
+            b.classList.toggle("active", (i === 0) === (section === "search"));
+        });
+        if (section === "cve") loadRecentCVEs();
+    }
+
+    function setType(type) {
+        currentType = type;
+        document.querySelectorAll(".type-btn").forEach(b => b.classList.remove("active"));
+        document.getElementById(`btn-${type}`).classList.add("active");
+    }
+
+    function setQuery(q) {
+        document.getElementById("query-input").value = q;
+    }
+
+    document.getElementById("query-input").addEventListener("keypress", e => {
+        if (e.key === "Enter") analyze();
+    });
+
+    async function analyze() {
+        const query = document.getElementById("query-input").value.trim();
+        if (!query) return;
+
+        document.getElementById("search-btn").disabled = true;
+        document.getElementById("loading").style.display = "block";
+        document.getElementById("results").style.display = "none";
+
+        const msgs = ["VirusTotal sorgulanıyor...", "AbuseIPDB kontrol ediliyor...", "Shodan taranıyor...", "Tehdit skoru hesaplanıyor..."];
+        let i = 0;
+        const interval = setInterval(() => {
+            document.getElementById("loading-text").textContent = msgs[i % msgs.length];
+            i++;
+        }, 1500);
+
+        try {
+            const response = await fetch("/api/analyze", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ query, type: currentType })
+            });
+            const data = await response.json();
+            clearInterval(interval);
+            document.getElementById("loading").style.display = "none";
+            document.getElementById("search-btn").disabled = false;
+
+            if (data.error) {
+                showError(data.error);
+                return;
+            }
+            renderResults(data);
+        } catch (err) {
+            clearInterval(interval);
+            document.getElementById("loading").style.display = "none";
+            document.getElementById("search-btn").disabled = false;
+            showError("Bağlantı hatası: " + err.message);
+        }
+    }
+
+    function showError(msg) {
+        const r = document.getElementById("results");
+        r.style.display = "block";
+        r.innerHTML = `<div class="error-box">❌ ${msg}</div>`;
+    }
+
+    function getScoreColor(score) {
+        if (score >= 70) return "#f85149";
+        if (score >= 40) return "#f0883e";
+        if (score >= 20) return "#d29922";
+        return "#3fb950";
+    }
+
+    function renderResults(data) {
+        const r = document.getElementById("results");
+        r.style.display = "block";
+
+        if (data.type === "ip" || data.type === "domain") {
+            const d = data.data;
+            const s = d.summary;
+            const score = s.threat_score || 0;
+            const level = s.threat_level || "LOW";
+            const color = getScoreColor(score);
+
+            let html = `
+            <div class="threat-card">
+                <div class="threat-header">
+                    <div class="threat-title">${s.ip || s.domain || d.ip || d.domain}</div>
+                    <div class="threat-badge badge-${level}">${level}</div>
+                </div>
+                <div class="score-bar">
+                    <div class="score-label"><span>Tehdit Skoru</span><span style="color:${color}">${score}/100</span></div>
+                    <div class="bar-bg"><div class="bar-fill" style="width:${score}%;background:${color}"></div></div>
+                </div>
+                <div class="tags">
+                    ${(s.tags || []).map(t => `<span class="tag tag-${score>=70?'red':score>=40?'orange':'blue'}">${t}</span>`).join("")}
+                    ${s.country ? `<span class="tag tag-gray">📍 ${s.country}</span>` : ""}
+                    ${s.isp ? `<span class="tag tag-gray">🏢 ${s.isp}</span>` : ""}
+                </div>`;
+
+            if (data.type === "ip") {
+                const vt = d.virustotal || {};
+                const ab = d.abuseipdb || {};
+                const sh = d.shodan || {};
+
+                html += `<div class="sources-grid">
+                    <div class="source-card">
+                        <div class="source-title">🔴 VirusTotal</div>
+                        <div class="source-item"><span class="source-key">Zararlı</span><span class="source-val ${vt.malicious>0?'danger':'safe'}">${vt.malicious || 0} engine</span></div>
+                        <div class="source-item"><span class="source-key">Şüpheli</span><span class="source-val">${vt.suspicious || 0} engine</span></div>
+                        <div class="source-item"><span class="source-key">Temiz</span><span class="source-val safe">${vt.harmless || 0} engine</span></div>
+                        <div class="source-item"><span class="source-key">Ülke</span><span class="source-val">${vt.country || "—"}</span></div>
+                    </div>
+                    <div class="source-card">
+                        <div class="source-title">🟠 AbuseIPDB</div>
+                        <div class="source-item"><span class="source-key">Abuse Skoru</span><span class="source-val ${ab.abuse_score>0?'danger':'safe'}">${ab.abuse_score || 0}%</span></div>
+                        <div class="source-item"><span class="source-key">Raporlar</span><span class="source-val">${ab.total_reports || 0}</span></div>
+                        <div class="source-item"><span class="source-key">TOR</span><span class="source-val ${ab.is_tor?'danger':'safe'}">${ab.is_tor ? "Evet ⚠" : "Hayır ✓"}</span></div>
+                        <div class="source-item"><span class="source-key">ISP</span><span class="source-val">${(ab.isp||"—").substring(0,20)}</span></div>
+                    </div>
+                    <div class="source-card">
+                        <div class="source-title">🔵 Shodan</div>
+                        <div class="source-item"><span class="source-key">Açık Port</span><span class="source-val">${(sh.open_ports||[]).length}</span></div>
+                        <div class="source-item"><span class="source-key">Portlar</span><span class="source-val">${(sh.open_ports||[]).slice(0,5).join(", ") || "—"}</span></div>
+                        <div class="source-item"><span class="source-key">OS</span><span class="source-val">${sh.os || "—"}</span></div>
+                        <div class="source-item"><span class="source-key">ISP</span><span class="source-val">${(sh.isp||"—").substring(0,20)}</span></div>
+                    </div>
+                </div>`;
+            } else {
+                const vt = d.virustotal || {};
+                html += `<div class="sources-grid" style="grid-template-columns:1fr 1fr">
+                    <div class="source-card">
+                        <div class="source-title">🔴 VirusTotal</div>
+                        <div class="source-item"><span class="source-key">Zararlı</span><span class="source-val ${vt.malicious>0?'danger':'safe'}">${vt.malicious || 0} engine</span></div>
+                        <div class="source-item"><span class="source-key">Şüpheli</span><span class="source-val">${vt.suspicious || 0} engine</span></div>
+                        <div class="source-item"><span class="source-key">Reputation</span><span class="source-val">${vt.reputation || 0}</span></div>
+                    </div>
+                    <div class="source-card">
+                        <div class="source-title">🌐 DNS</div>
+                        <div class="source-item"><span class="source-key">IP</span><span class="source-val">${d.dns?.ip || "—"}</span></div>
+                        <div class="source-item"><span class="source-key">Kategoriler</span><span class="source-val">${(s.categories||[]).slice(0,2).join(", ") || "—"}</span></div>
+                    </div>
+                </div>`;
+            }
+
+            html += `</div>`;
+            r.innerHTML = html;
+
+        } else if (data.type === "cve") {
+            const d = data.data;
+            renderCVEList(d.cves || [], r);
+        }
+    }
+
+    function renderCVEList(cves, container) {
+        if (!cves.length) {
+            container.innerHTML = `<div class="error-box">CVE bulunamadı</div>`;
+            return;
+        }
+        container.innerHTML = `<div class="cve-grid">${cves.map(cve => `
+            <div class="cve-card">
+                <div class="cve-header">
+                    <span class="cve-id">${cve.id}</span>
+                    <span class="cve-score score-${cve.severity}">${cve.score}</span>
+                </div>
+                <div class="cve-desc">${cve.description || "Açıklama yok"}</div>
+                <div class="cve-meta">${cve.published} · <span class="tag tag-${cve.severity==='CRITICAL'?'red':cve.severity==='HIGH'?'orange':'gray'}" style="padding:1px 6px;border-radius:3px;font-size:10px">${cve.severity}</span></div>
+                <a href="${cve.url}" target="_blank" class="cve-link">NVD'de Görüntüle →</a>
+            </div>`).join("")}</div>`;
+    }
+
+    async function loadRecentCVEs() {
+        document.getElementById("cve-grid").innerHTML = `<div style="color:#8b949e;font-size:13px">Yükleniyor...</div>`;
+        try {
+            const response = await fetch("/api/cves/recent?days=7&limit=20");
+            const data = await response.json();
+
+            const stats = document.getElementById("cve-stats");
+            stats.style.display = "grid";
+            stats.innerHTML = `
+                <div class="stat-card"><div class="stat-num" style="color:#f85149">${data.critical || 0}</div><div class="stat-label">Critical CVE</div></div>
+                <div class="stat-card"><div class="stat-num" style="color:#f0883e">${data.high || 0}</div><div class="stat-label">High CVE</div></div>
+                <div class="stat-card"><div class="stat-num" style="color:#58a6ff">${data.total || 0}</div><div class="stat-label">Toplam (7 gün)</div></div>`;
+
+            renderCVEList(data.cves || [], document.getElementById("cve-grid"));
+        } catch (err) {
+            document.getElementById("cve-grid").innerHTML = `<div class="error-box">Yükleme hatası: ${err.message}</div>`;
+        }
+    }
+
+    async function searchCVE() {
+        const q = document.getElementById("cve-search-input").value.trim();
+        if (!q) return;
+
+        document.getElementById("cve-title").textContent = `"${q}" için CVE Sonuçları`;
+        document.getElementById("cve-grid").innerHTML = `<div style="color:#8b949e;font-size:13px">Aranıyor...</div>`;
+
+        try {
+            const response = await fetch(`/api/cves/search?q=${encodeURIComponent(q)}`);
+            const data = await response.json();
+
+            const stats = document.getElementById("cve-stats");
+            stats.style.display = "grid";
+            stats.innerHTML = `
+                <div class="stat-card"><div class="stat-num" style="color:#f85149">${data.critical || 0}</div><div class="stat-label">Critical</div></div>
+                <div class="stat-card"><div class="stat-num" style="color:#f0883e">${data.high || 0}</div><div class="stat-label">High</div></div>
+                <div class="stat-card"><div class="stat-num" style="color:#58a6ff">${data.total || 0}</div><div class="stat-label">Toplam Sonuç</div></div>`;
+
+            renderCVEList(data.cves || [], document.getElementById("cve-grid"));
+        } catch (err) {
+            document.getElementById("cve-grid").innerHTML = `<div class="error-box">Hata: ${err.message}</div>`;
+        }
+    }
+
+    document.getElementById("cve-search-input")?.addEventListener("keypress", e => {
+        if (e.key === "Enter") searchCVE();
+    });
+</script>
+</body>
+</html>
